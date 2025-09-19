@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="img/icon" type="image/x-icon">
+  <title>Suivi BMS - Qotto Bénin</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #000000; /* Noir */
+      color: #ffffff; /* Blanc */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+
+    .container {
+      background-color: #ffffff; /* Fond blanc */
+      color: #000000; /* Texte noir dans le conteneur */
+      padding: 20px;
+      border-radius: 15px;
+      width: 520px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.7);
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #006400; /* Vert Qotto */
+    }
+
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-weight: bold;
+      color: #000000; /* Texte noir */
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: 2px solid #006400; /* Bordure verte */
+      border-radius: 8px;
+      margin-bottom: 15px;
+      outline: none;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #006400; /* Vert Qotto */
+      color: #ffffff; /* Texte blanc */
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+      transition: 0.3s;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #00a000; /* Vert clair au survol */
+    }
+
+    .result {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #d0f0c0; /* Vert très clair */
+      color: #006400; /* Vert foncé texte */
+      border-radius: 10px;
+      text-align: center;
+      font-size: 18px;
+      font-weight: bold;
+    }
+
+    table {
+      width: 100%;
+      margin-top: 15px;
+      border-collapse: collapse;
+      text-align: center;
+    }
+
+    th, td {
+      padding: 8px;
+      border: 2px solid #006400; /* Bordure verte */
+    }
+
+    th {
+      background-color: #006400; /* Vert Qotto */
+      color: #ffffff; /* Texte blanc */
+    }
+
+    input.daily {
+      width: 60px;
+      text-align: center;
+      padding: 5px;
+      border: 2px solid #006400;
+      border-radius: 5px;
+    }
+
+    .alert {
+      margin-top: 15px;
+      padding: 10px;
+      border-radius: 8px;
+      font-weight: bold;
+      text-align: center;
+    }
+
+    .ok {
+      background-color: #00a000; /* Vert clair */
+      color: #ffffff;
+    }
+
+    .danger {
+      background-color: #ff0000; /* Rouge vif */
+      color: #ffffff;
+      border: 2px solid #800000; /* Bordure rouge foncé */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>📊 Suivi BMS - Qotto Bénin</h2>
+
+    <label for="bms">Nombre total de BMS :</label>
+    <input type="number" id="bms" placeholder="Ex: 120">
+
+    <label for="jours">Nombre de jours de l'objectif :</label>
+    <input type="number" id="jours" placeholder="Ex: 5">
+
+    <button onclick="genererTableau()">Générer le plan</button>
+    <div class="result" id="resultat">👉 Résultat affiché ici</div>
+
+    <div id="tableau"></div>
+
+    <div id="alerte"></div>
+
+    <button onclick="telechargerCSV()">💾 Télécharger le planning</button>
+  </div>
+
+  <script>
+    let plan = [];
+    let totalBMS = 0;
+    let joursObj = 0;
+
+    function genererTableau() {
+      const bms = parseInt(document.getElementById("bms").value);
+      const jours = parseInt(document.getElementById("jours").value);
+      const resDiv = document.getElementById("resultat");
+      const tableDiv = document.getElementById("tableau");
+      const alerteDiv = document.getElementById("alerte");
+
+      if (isNaN(bms) || isNaN(jours) || jours <= 0) {
+        resDiv.textContent = "⚠️ Merci d'entrer des valeurs valides.";
+        tableDiv.innerHTML = "";
+        return;
+      }
+
+      totalBMS = bms;
+      joursObj = jours;
+
+      const parJour = Math.floor(bms / jours);
+      const reste = bms % jours;
+
+      resDiv.textContent = `✅ Objectif : ${bms} BMS en ${jours} jours (${parJour} à ${parJour+1} par jour).`;
+      alerteDiv.innerHTML = "";
+
+      plan = [];
+      for (let i = 1; i <= jours; i++) {
+        let objectifJour = parJour;
+        if (i <= reste) objectifJour += 1;
+        plan.push({ jour: i, objectif: objectifJour, fait: 0 });
+      }
+
+      afficherTableau();
+    }
+
+    function afficherTableau() {
+      let tableHTML = "<table><tr><th>Jour</th><th>Objectif</th><th>Fait</th><th>Reste</th></tr>";
+      plan.forEach((d, index) => {
+        tableHTML += `
+          <tr>
+            <td>Jour ${d.jour}</td>
+            <td>${d.objectif}</td>
+            <td>
+              <input type="number" class="daily" value="${d.fait}"
+              min="0" max="${d.objectif}" onchange="majFait(${index}, this.value)">
+            </td>
+            <td>${d.objectif - d.fait}</td>
+          </tr>`;
+      });
+      tableHTML += "</table>";
+
+      document.getElementById("tableau").innerHTML = tableHTML;
+      verifierAlerte();
+    }
+
+    function majFait(index, value) {
+      plan[index].fait = parseInt(value) || 0;
+      afficherTableau();
+    }
+
+    function verifierAlerte() {
+      const totalFait = plan.reduce((sum, d) => sum + d.fait, 0);
+      const resteGlobal = totalBMS - totalFait;
+      const joursRestants = plan.filter(d => d.fait < d.objectif).length;
+
+      let alerteDiv = document.getElementById("alerte");
+      if (resteGlobal <= 0) {
+        alerteDiv.innerHTML = `<div class="alert ok">🎉 Objectif atteint ou dépassé !</div>`;
+      } else {
+        const rythmeNecessaire = Math.ceil(resteGlobal / (joursRestants || 1));
+        if (rythmeNecessaire > plan[0].objectif + 5) {
+          alerteDiv.innerHTML = `<div class="alert danger">⚠️ Attention : il reste ${resteGlobal} BMS. Il faudrait traiter environ ${rythmeNecessaire} par jour pour finir à temps !</div>`;
+        } else {
+          alerteDiv.innerHTML = `<div class="alert ok">✅ Encore ${resteGlobal} BMS à traiter. Continuez !</div>`;
+        }
+      }
+    }
+
+    function telechargerCSV() {
+      if(plan.length === 0) {
+        alert("⚠️ Générer d'abord le planning !");
+        return;
+      }
+      let csv = "Jour,Objectif,Fait,Reste\n";
+      plan.forEach(d => {
+        csv += `${d.jour},${d.objectif},${d.fait},${d.objectif - d.fait}\n`;
+      });
+
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "planning_BMS.csv";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+  </script>
+</body>
+</html>
